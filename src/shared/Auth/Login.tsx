@@ -56,9 +56,7 @@ const Login = ({
       let UserId = response.data.Login.user.id
       let UserRole = response.data.Login.user.role
       let UserEmail = response.data.Login.user.email
-      // console.log(UserEmail)
       let UserChiNhanIdAndKhachSanId = await getByUserEmailChiNhanh(UserEmail)
-      // console.log(UserChiNhanIdAndKhachSanId) 
 
       let userIdChiNhanh = UserChiNhanIdAndKhachSanId?.ChiNhanh[0]?.id ?? "";
       let userIdKhachSan = UserChiNhanIdAndKhachSanId?.ChiNhanh[0]?.KhachSan[0]?.id ?? "";

@@ -11,13 +11,13 @@ import { useForm } from 'react-hook-form'
 import { IoMdSave, IoMdArrowDropdown } from 'react-icons/io'
 import { MdBlock, MdDeleteForever } from 'react-icons/md'
 import { getByNameNhomHangHotel } from '@/actions/GET/get-by-name-hang-hoa'
-import createSubUser from '@/actions/POST/create-sub-user'
 import type { GetProp, UploadFile, UploadProps } from 'antd'
 import ImgCrop from 'antd-img-crop'
 import { PiWarningCircleFill } from 'react-icons/pi' 
 import { Textarea } from '@nextui-org/react'
 import { FaPlus } from 'react-icons/fa6'
 import getAllNhomHangsHotel from '@/actions/GET/get-all-nhom-hang-hoa'
+import createHangHoa from '@/actions/POST/create-hang-hoa'
 
 
 type CreateHangHoaTypeSchema = z.infer<typeof formSchemaCreateHangHoatype>
@@ -166,7 +166,7 @@ return () => {
   }
   //
 
-  const onPreviewRoom = async (file: UploadFile) => {
+  const onPreviewHangHoa = async (file: UploadFile) => {
     let src = file.url as string
     if (!src) {
       src = await new Promise((resolve) => {
@@ -183,34 +183,137 @@ return () => {
 
   // Submit form
   const onSubmit = async (data: CreateHangHoaTypeSchema) => {
-    const selectedNhomHangHotel = nhomHangHotelInput
-    const imageUrls = fileList.map((file) => file.name)
-    const DataCreateHangHoa = {
-      id: data?.id,
+    const selectedNhomHangHotel = nhomHangHotelInput;
+    const imageUrls = fileList.map((file) => file.name);
+  
+    let DataCreateHangHoa: any = {
       TenHangHoa: data.TenHangHoa,
       MaNhomHangHoa: nhomHangHotelInput,
-      DonVitinh: data.DonViTinh,
+      DonViTinh: data?.DonViTinh,
       GiaGocHangHoa: data.GiaGocHangHoa,
       GiaBanHangHoa: data.GiaBanHangHoa,
       SLTonKho: data.SLTonKho,
-      DinhMucTonItNhat: data?.DinhMucTonItNhat,
-      DinhMucTonNhieuNhat: data?.DinhMucTonNhieuNhat,
+      DinhMucTonItNhat: data?.DinhMucTonItNhat || 0,
+      DinhMucTonNhieuNhat: data?.DinhMucTonNhieuNhat || 999999999,
       MoTa: data?.MoTa,
       GhiChu: data?.GhiChu,
       CacLinkAnhHangHoa: imageUrls,
+    };
+  
+
+
+    if(!selectedNhomHangHotel || imageUrls.length === 0)  {
+      toast.error('Vui lòng bổ sung đầy đủ nhóm hàng và ảnh!');
     }
-    if (selectedNhomHangHotel && imageUrls) {
+  
+    if (selectedNhomHangHotel && imageUrls.length > 0) {
+      if(inputValues.length === 0) {
+        try {
+            await createHangHoa(DataCreateHangHoa);
+              toast.success('Thêm mới hàng hóa thành công!');
+              reset();
+              setOpen('screen');
+        } catch (error: any) {
+          toast.error(error.message);
+        }
+      } else if(inputValues.length > 0){
+        // Kiểm tra xem có giá trị trùng nhau không
+        const valueSet = new Set();
+        let hasDuplicate = false;
+        let hasEmptyValue = false;
+        inputValues.forEach(value => {
+          if (value.nameProduct === '' || value.exchangeValue === 0) {
+            hasEmptyValue = true;
+          }
+          const valueString = `${value.nameProduct}-${value.idProduct}`;
+          if (
+            valueSet.has(valueString) || 
+            (value.idProduct === data.id && value.idProduct !== '' && data.id !== '')
+            ) {
+            hasDuplicate = true;
+          } else {
+            valueSet.add(value.nameProduct);
+          }
+        });
+
+    if (hasDuplicate) {
+      toast.error('Có giá trị trùng nhau trong khi thêm đơn vị!');
+    }
+
+    if (hasEmptyValue) {
+      toast.error('Có giá trị bị bỏ trống trong khi thêm đơn vị!');
+    }
+
+    if(!hasDuplicate && !hasEmptyValue) {
+      let completedCount = 0;
       try {
-        console.log(DataCreateHangHoa)
-        // await createHangHoa(DataCreateHangHoa)
-        toast.success('Thêm mới hàng hóa thành công!')
-        reset()
-        setOpen('screen')
+        for (const value of inputValues) {
+          let ExchangeMoneyGoc = data.GiaGocHangHoa * value.exchangeValue
+          let ExchangeMoneyBan = data.GiaBanHangHoa * value.exchangeValue
+          if(value.idProduct === '') {
+            let DataCreateHangHoaHadInputValue: any = {
+              TenHangHoa: data.TenHangHoa,
+              MaNhomHangHoa: nhomHangHotelInput,
+              DonViTinh: value.nameProduct,
+              GiaGocHangHoa: ExchangeMoneyGoc,
+              GiaBanHangHoa: ExchangeMoneyBan,
+              SLTonKho: 0,
+              DinhMucTonItNhat: data?.DinhMucTonItNhat || 0,
+              DinhMucTonNhieuNhat: data?.DinhMucTonNhieuNhat || 999999999,
+              MoTa: data?.MoTa,
+              GhiChu: data?.GhiChu,
+              CacLinkAnhHangHoa: imageUrls,
+            };
+            
+            await createHangHoa(DataCreateHangHoaHadInputValue);
+            completedCount++;
+          if (completedCount === inputValues.length) {
+            await createHangHoa(DataCreateHangHoa);
+            toast.success('Thêm mới hàng hóa thành công!');
+            reset();
+            setOpen('screen');
+          }
+          } else if(value.idProduct !== '') {
+            let DataCreateHangHoaHadInputValue: any = {
+              id: value.idProduct,
+              TenHangHoa: data.TenHangHoa,
+              MaNhomHangHoa: nhomHangHotelInput,
+              DonViTinh: value.nameProduct,
+              GiaGocHangHoa: ExchangeMoneyGoc,
+              GiaBanHangHoa: ExchangeMoneyBan,
+              SLTonKho: 0,
+              DinhMucTonItNhat: data?.DinhMucTonItNhat || 0,
+              DinhMucTonNhieuNhat: data?.DinhMucTonNhieuNhat || 999999999,
+              MoTa: data?.MoTa,
+              GhiChu: data?.GhiChu,
+              CacLinkAnhHangHoa: imageUrls,
+            };
+            
+            await createHangHoa(DataCreateHangHoaHadInputValue);
+            completedCount++;
+          if (completedCount === inputValues.length) {
+            if (data.id) {
+              DataCreateHangHoa = {
+                ...DataCreateHangHoa,
+                id: data.id,
+              };
+              createHangHoa(DataCreateHangHoa);
+            } else {
+              createHangHoa(DataCreateHangHoa);
+            }
+            toast.success('Thêm mới hàng hóa thành công!');
+            reset();
+            setOpen('screen');
+          }
+          }
+          
+        }
       } catch (error: any) {
-        toast.error(error.message)
+        toast.error(error.message);
       }
-    } else {
-      toast.error('Vui lòng bổ sung đầy đủ nhóm hàng và ảnh!')
+    }
+      } 
+
     }
   }
 
@@ -232,12 +335,20 @@ return () => {
       </p>
     </div>
   )
-
+  
   const contentDinhMucNhieuNhat = (
     <div>
       <p>
         Bạn có thể chọn giữa việc tự nhập khoảng định mức nhiều nhất hay để cập
         nhập tự động, mặc định định mức sẽ là 999.999.999 VNĐ
+      </p>
+    </div>
+  )
+
+  const contentMaHangHoaMore = (
+    <div>
+      <p>
+        Đây là đơn vị cơ bản và cũng là mặc định của 1 sản phẩm lẻ, ví dụ: lon, chai, chiếc,...
       </p>
     </div>
   )
@@ -406,7 +517,7 @@ return () => {
                   listType="picture-card"
                   fileList={fileList}
                   onChange={onChange}
-                  onPreview={onPreviewRoom}
+                  onPreview={onPreviewHangHoa}
                 >
                   {fileList.length < 5 && '+ Upload'}
                 </Upload>
@@ -479,12 +590,18 @@ return () => {
               <div className="bg-slate-50 overflow-y-auto transition-all duration-500 max-h-0 peer-checked:max-h-40">
                 <div className="p-4">
                   <div className="flex flex-col items-start gap-2">
+                    <div className='flex'>
                     <label
                       htmlFor="DonViTinh"
                       className={`${styles.formlabel}`}
                     >
                       Đơn vị cơ bản:
                     </label>
+                    <Popover content={contentMaHangHoaMore} title="Lưu ý!">
+                              <PiWarningCircleFill className="size-5 text-gray-500" />
+                    </Popover>
+                    </div>
+
                     <input
                       {...register('DonViTinh')}
                       type="text"
@@ -523,7 +640,7 @@ return () => {
                             htmlFor={`GiaTriQuyDoi${index}`}
                             className={`${styles.formlabel}`}
                           >
-                            Tên đơn vị:
+                            Giá trị quy đổi:
                           </label>
                           <input
                             type="number"
@@ -544,11 +661,12 @@ return () => {
                             htmlFor={`MaHangHoa${index}`}
                             className={`${styles.formlabel}`}
                           >
-                            Tên đơn vị:
+                            Mã hàng hóa:
                           </label>
                           <input
                             type="text"
                             value={value.idProduct}
+                            placeholder='Mã hàng hóa tự động'
                             onChange={(e) =>
                               handleInputChange(index, {
                                 ...value,

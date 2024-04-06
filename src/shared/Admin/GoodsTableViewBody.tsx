@@ -1,14 +1,23 @@
 "use server";
 
 import AdminAddGoodsButtonsComponent from '@/components/Buttons/AdminAddGoodsButtonsComponent'
-import AdminGoodsTableComponent from '@/components/Tables/AdminGoodsTableComponent'
+import AdminGoodTableFormViewComponent from '@/components/Tables/AdminGoodTableFormViewComponent'
 import AdminHeader from '@/components/Layout/AdminHeader'
 import getAllHangHoaHotel from "@/actions/GET/get-all-hang-hoa"
 
 
 
 
-export default async function GoodsBody () {
+export default async function GoodsTableViewBody ({
+  idHangHoa,
+  HangHoaAndImagesData,
+  NhomHangHoaByIdData
+}: {
+  idHangHoa: string
+  HangHoaAndImagesData: any
+  NhomHangHoaByIdData: any
+}
+) {
   const hangHoaData = await getAllHangHoaHotel();
   return (
     <div className="basis-5/6">
@@ -21,8 +30,10 @@ export default async function GoodsBody () {
         <AdminAddGoodsButtonsComponent />
       </div>
       <div className="w-full h-full grid place-content-center">
-        <AdminGoodsTableComponent 
-        hangHoaData={hangHoaData} 
+        <AdminGoodTableFormViewComponent 
+        idHangHoa={idHangHoa} 
+        HangHoaAndImagesData={HangHoaAndImagesData}
+        NhomHangHoaByIdData={NhomHangHoaByIdData}
         />
       </div>
     </div>
